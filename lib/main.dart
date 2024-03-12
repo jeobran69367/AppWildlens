@@ -1,22 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:camera/camera.dart';
-import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  final cameras = await availableCameras();
-  final firstCamera = cameras.first;
-
-  runApp(MyApp(camera: firstCamera));
+void main() {
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final CameraDescription camera;
-
-  const MyApp({Key? key, required this.camera}) : super(key: key);
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -24,152 +14,175 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: HomePage(camera: camera),
+      home: HomePage(),
     );
   }
 }
 
 class HomePage extends StatelessWidget {
-  final CameraDescription camera;
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/background_image.jpg'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  Text(
+                    'Bienvenue sur Application',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 20),
+                  Image.asset(
+                    'assets/images/wildaware-high-resolution-color-logo.png',
+                    height: 150,
+                  ),
+                  SizedBox(height: 30),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ImageCapture(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.blue,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
+                    ),
+                    child: Text(
+                      'Prendre une photo',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-  const HomePage({Key? key, required this.camera}) : super(key: key);
+class ImageCapture extends StatefulWidget {
+  @override
+  _ImageCaptureState createState() => _ImageCaptureState();
+}
+
+class _ImageCaptureState extends State<ImageCapture> {
+  File? file;
+  ImagePicker image = ImagePicker();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "Reconnaissance d'Empreintes Animales",
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.lightGreen,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Image.asset(
-                'assets/images/wildaware-high-resolution-color-logo.png',
-                height: 150,
+          children: [
+            Container(
+              height: 300,
+              width: 300,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(10.0),
+                border: file == null
+                    ? Border.all(color: Colors.blue, width: 2.0)
+                    : Border.all(color: Colors.transparent),
+              ),
+              child: file == null
+                  ? Icon(
+                Icons.image,
+                size: 80,
+                color: Colors.blue,
+              )
+                  : ClipRRect(
+                borderRadius: BorderRadius.circular(8.0),
+                child: Image.file(
+                  file!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
               ),
             ),
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CameraPage(camera: camera),
-                  ),
-                );
+                getGallery();
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white, backgroundColor: Colors.blue,
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
-              child: Text(
-                'Prendre une photo',
-                style: TextStyle(fontSize: 18),
+              child: Text("Choose from gallery"),
+            ),
+            SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: () {
+                getCamera();
+              },
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white, backgroundColor: Colors.blue,
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
+              child: Text("Take from camera"),
             ),
           ],
         ),
       ),
     );
   }
-}
-class CameraPage extends StatefulWidget {
-  final CameraDescription camera;
 
-  const CameraPage({Key? key, required this.camera}) : super(key: key);
-
-  @override
-  _CameraPageState createState() => _CameraPageState();
-}
-
-class _CameraPageState extends State<CameraPage> {
-  late CameraController _controller;
-  late Future<void> _initializeControllerFuture;
-  File? _imageFile;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = CameraController(
-      widget.camera,
-      ResolutionPreset.medium,
-    );
-    _initializeControllerFuture = _controller.initialize();
+  getCamera() async {
+    var img = await image.getImage(source: ImageSource.camera);
+    if (img != null) {
+      setState(() {
+        file = File(img.path);
+      });
+    }
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Caméra'),
-      ),
-      body: FutureBuilder<void>(
-        future: _initializeControllerFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            return _buildCameraPreview();
-          } else {
-            return Center(child: CircularProgressIndicator());
-          }
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          try {
-            await _initializeControllerFuture;
-            final image = await _controller.takePicture();
-            setState(() {
-              _imageFile = File(image.path);
-            });
-          } catch (e) {
-            print(e);
-          }
-        },
-        child: Icon(Icons.camera),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      bottomNavigationBar: _buildBottomNavigationBar(),
-    );
-  }
-
-  Widget _buildCameraPreview() {
-    return _imageFile == null
-        ? CameraPreview(_controller)
-        : Image.file(_imageFile!);
-  }
-
-  Widget _buildBottomNavigationBar() {
-    return BottomAppBar(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          ElevatedButton(
-            onPressed: _imageFile != null ? _onEditPressed : null,
-            child: Text('Modifier'),
-          ),
-          ElevatedButton(
-            onPressed: _imageFile != null ? _onValidatePressed : null,
-            child: Text('Valider'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _onEditPressed() {
-    // Implémentez la logique pour éditer la photo
-    // Utilisez _imageFile pour accéder à la photo
-  }
-
-  void _onValidatePressed() {
-    // Implémentez la logique pour valider la photo
-    // Utilisez _imageFile pour accéder à la photo
+  getGallery() async {
+    var img = await image.getImage(source: ImageSource.gallery);
+    if (img != null) {
+      setState(() {
+        file = File(img.path);
+      });
+    }
   }
 }

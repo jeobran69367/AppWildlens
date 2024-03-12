@@ -18,6 +18,10 @@ allprojects {
 }
 
 rootProject.buildDir = '../build'
+
+dependencies {
+    implementation 'com.google.android.material:material:1.11.0'
+}
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
