@@ -1,41 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:camera/camera.dart';
 import 'dart:io';
-
+import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final cameras = await availableCameras();
+  final firstCamera = cameras.first;
+  runApp(MyApp(camera: firstCamera));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  final CameraDescription camera;
 
-  // Request camera and storage permissions on app launch
-  void initState() {
-    requestPermissions();
-  }
-
-  Future<void> requestPermissions() async {
-    // Request permission to access camera and storage
-    await Permission.camera.request();
-    await Permission.storage.request();
-  }
+  const MyApp({Key? key, required this.camera}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Mon Projet Flutter',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const HomePage(),
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: HomePage(camera: camera),
     );
   }
 }
 
 class HomePage extends StatelessWidget {
-  const HomePage({Key? key}) : super(key: key);
+  final CameraDescription camera;
+
+  const HomePage({Key? key, required this.camera}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +72,7 @@ class HomePage extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ImageCapture(),
+                          builder: (context) => ImageCapture(camera: camera),
                         ),
                       );
                     },
@@ -85,9 +80,7 @@ class HomePage extends StatelessWidget {
                       foregroundColor: Colors.white,
                       backgroundColor: Colors.blue,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
-                      ),
+                          horizontal: 20, vertical: 10),
                     ),
                     child: const Text(
                       'Prendre une photo',
@@ -105,7 +98,9 @@ class HomePage extends StatelessWidget {
 }
 
 class ImageCapture extends StatefulWidget {
-  const ImageCapture({Key? key}) : super(key: key);
+  final CameraDescription camera;
+
+  const ImageCapture({Key? key, required this.camera}) : super(key: key);
 
   @override
   _ImageCaptureState createState() => _ImageCaptureState();
@@ -121,10 +116,7 @@ class _ImageCaptureState extends State<ImageCapture> {
       appBar: AppBar(
         title: const Text(
           "Reconnaissance d'Empreintes Animales",
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.lightGreen,
-          ),
+          style: TextStyle(fontSize: 12, color: Colors.lightGreen),
           textAlign: TextAlign.center,
         ),
       ),
@@ -144,7 +136,7 @@ class _ImageCaptureState extends State<ImageCapture> {
                     : Border.all(color: Colors.transparent),
               ),
               child: _image == null
-                  ? const Icon(
+                  ? Icon(
                 Icons.image,
                 size: 80,
                 color: Colors.blue,
@@ -170,78 +162,35 @@ class _ImageCaptureState extends State<ImageCapture> {
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: Colors.blue,
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
                   ),
-                  child: const Text("Choose from gallery"),
+                  child: const Text("Choisir dans la galerie"),
                 ),
                 const SizedBox(width: 10),
                 ElevatedButton(
                   onPressed: () {
-                    getCamera();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CameraPage(camera: widget.camera),
+                      ),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: Colors.blue,
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
                   ),
-                  child: const Text("Take from camera"),
+                  child: const Text("Prendre depuis la caméra"),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            if (_image != null)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      getCamera();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: Colors.blue,
-                      padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    ),
-                    child: const Text("Retake"),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Passer à l'étape suivante avec l'image sélectionnée
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => NextPage(_image!),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: Colors.blue,
-                      padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    ),
-                    child: const Text("Good"),
-                  ),
-                ],
-              ),
           ],
         ),
       ),
     );
-  }
-
-  Future<void> getCamera() async {
-    final pickedFile = await _picker.getImage(source: ImageSource.camera);
-    if (pickedFile != null) return;
-
-(() {
-        _image = File(pickedFile!.path);
-      });
-
   }
 
   Future<void> getGallery() async {
@@ -254,27 +203,131 @@ class _ImageCaptureState extends State<ImageCapture> {
   }
 }
 
-class imageTempory {
+class CameraPage extends StatefulWidget {
+  final CameraDescription camera;
+
+  const CameraPage({Key? key, required this.camera}) : super(key: key);
+
+  @override
+  _CameraPageState createState() => _CameraPageState();
 }
 
+class _CameraPageState extends State<CameraPage> {
+  late CameraController _controller;
+  late Future<void> _initializeControllerFuture;
+  File? _imageFile;
+  bool _isCameraActive = true;
 
+  @override
+  void initState() {
+    super.initState();
+    _controller = CameraController(widget.camera, ResolutionPreset.medium);
+    _initializeControllerFuture = _controller.initialize();
+  }
 
-class NextPage extends StatelessWidget {
-  final File _image;
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
-  const NextPage(this._image, {Key? key}) : super(key: key);
+  Widget _buildCameraPreview() {
+    return Center(
+      child: AspectRatio(
+        aspectRatio: _controller.value.aspectRatio,
+        child: CameraPreview(_controller),
+      ),
+    );
+  }
+
+  void _onCapturePressed() async {
+    try {
+      await _initializeControllerFuture;
+      final image = await _controller.takePicture();
+      final bytes = await image.readAsBytes();
+      setState(() {
+        _imageFile = File(image.path);
+        _isCameraActive = false;
+      });
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PreviewPage(imageBytes: bytes),
+        ),
+      );
+    } catch (e) {
+      print(e);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Next Page"),
+        title: const Text('Caméra'),
       ),
-      body: Center(
-        child: Image.file(
-          _image,
-          fit: BoxFit.contain,
-        ),
+      body: FutureBuilder<void>(
+        future: _initializeControllerFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return _buildCameraPreview();
+          } else {
+            return const Center(child: CircularProgressIndicator());
+          }
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _isCameraActive ? _onCapturePressed : null,
+        child: const Icon(Icons.camera),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+}
+
+class PreviewPage extends StatelessWidget {
+  final Uint8List imageBytes;
+
+  const PreviewPage({Key? key, required this.imageBytes}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Aperçu'),
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Image.memory(
+            imageBytes,
+            height: 300,
+            width: 300,
+            fit: BoxFit.cover,
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  // Ajouter ici la logique pour valider et stocker localement
+                  Navigator.pop(context); // Revenir à la page de la caméra
+                },
+                child: const Text('Valider'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // Ajouter ici la logique pour supprimer et reprendre une photo
+                  Navigator.pop(context); // Revenir à la page de la caméra
+                },
+                child: const Text('Supprimer'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -1,239 +1,376 @@
-import 'dart:io';
-
-import 'package:camera/camera.dart';
-import 'package:external_path/external_path.dart';
 import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
-import 'package:media_scanner/media_scanner.dart';
+import 'package:camera/camera.dart';
+import 'dart:io';
+import 'dart:typed_data' show Uint8List;
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-class MainPage extends StatefulWidget {
-  final List<CameraDescription> cameras;
-  const MainPage({required this.cameras});
-
-  @override
-  State<MainPage> createState() => _MainPageState();
+void main() {
+  runApp(const MyApp());
 }
 
-class _MainPageState extends State<MainPage> {
-  late CameraController cameraController;
-  late Future<void> cameraValue;
-  List<File> imagesList = [];
-  bool isFlashOn = false;
-  bool isRearCamera = true;
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
 
-  Future<File> saveImage(XFile image) async {
-    final downlaodPath = await ExternalPath.getExternalStoragePublicDirectory(
-        ExternalPath.DIRECTORY_DOWNLOADS);
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}.png';
-    final file = File('$downlaodPath/$fileName');
-
-    try {
-      await file.writeAsBytes(await image.readAsBytes());
-    } catch (_) {}
-
-    return file;
-  }
-
-  void takePicture() async {
-    XFile? image;
-
-    if (cameraController.value.isTakingPicture ||
-        !cameraController.value.isInitialized) {
-      return;
-    }
-
-    if (isFlashOn == false) {
-      await cameraController.setFlashMode(FlashMode.off);
-    } else {
-      await cameraController.setFlashMode(FlashMode.torch);
-    }
-    image = await cameraController.takePicture();
-
-    if (cameraController.value.flashMode == FlashMode.torch) {
-      setState(() {
-        cameraController.setFlashMode(FlashMode.off);
-      });
-    }
-
-    final file = await saveImage(image);
-    setState(() {
-      imagesList.add(file);
-    });
-    MediaScanner.loadMedia(path: file.path);
-  }
-
-  void startCamera(int camera) {
-    cameraController = CameraController(
-      widget.cameras[camera],
-      ResolutionPreset.high,
-      enableAudio: false,
-    );
-    cameraValue = cameraController.initialize();
-  }
-
-  @override
+  // Request camera and storage permissions on app launch
   void initState() {
-    startCamera(0);
-    super.initState();
+    requestPermissions();
   }
 
-  @override
-  void dispose() {
-    cameraController.dispose();
-    super.dispose();
+  Future<void> requestPermissions() async {
+    // Request permission to access camera and storage
+    await Permission.camera.request();
+    await Permission.storage.request();
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color.fromRGBO(255, 255, 255, .7),
-        shape: const CircleBorder(),
-        onPressed: takePicture,
-        child: const Icon(
-          Icons.camera_alt,
-          size: 40,
-          color: Colors.black87,
-        ),
+    return MaterialApp(
+      title: 'Mon Projet Flutter',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      home: const HomePage(),
+    );
+  }
+}
+
+class HomePage extends StatelessWidget {
+  const HomePage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
       body: Stack(
         children: [
-          FutureBuilder(
-            future: cameraValue,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.done) {
-                return SizedBox(
-                  width: size.width,
-                  height: size.height,
-                  child: FittedBox(
-                    fit: BoxFit.cover,
-                    child: SizedBox(
-                      width: 100,
-                      child: CameraPreview(cameraController),
-                    ),
-                  ),
-                );
-              } else {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
-              }
-            },
-          ),
-          SafeArea(
-            child: Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 5, top: 10),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          isFlashOn = !isFlashOn;
-                        });
-                      },
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: Color.fromARGB(50, 0, 0, 0),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: isFlashOn
-                              ? const Icon(
-                            Icons.flash_on,
-                            color: Colors.white,
-                            size: 30,
-                          )
-                              : const Icon(
-                            Icons.flash_off,
-                            color: Colors.white,
-                            size: 30,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const Gap(10),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          isRearCamera = !isRearCamera;
-                        });
-                        isRearCamera ? startCamera(0) : startCamera(1);
-                      },
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: Color.fromARGB(50, 0, 0, 0),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: isRearCamera
-                              ? const Icon(
-                            Icons.camera_rear,
-                            color: Colors.white,
-                            size: 30,
-                          )
-                              : const Icon(
-                            Icons.camera_front,
-                            color: Colors.white,
-                            size: 30,
-                          ),
-                        ),
-                      ),
-                    )
-                  ],
-                ),
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/background_image.jpg'),
+                fit: BoxFit.cover,
               ),
             ),
           ),
-          Align(
-            alignment: Alignment.bottomLeft,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 7, bottom: 75),
-                    child: Container(
-                      height: 100,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: imagesList.length,
-                        scrollDirection: Axis.horizontal,
-                        itemBuilder: (BuildContext context, int index) {
-                          return Padding(
-                            padding: const EdgeInsets.all(2),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image(
-                                height: 100,
-                                width: 100,
-                                opacity: const AlwaysStoppedAnimation(07),
-                                image: FileImage(
-                                  File(imagesList[index].path),
-                                ),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          );
-                        },
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  const Text(
+                    'Bienvenue sur Application',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  Image.asset(
+                    'assets/images/wildaware-high-resolution-color-logo.png',
+                    height: 150,
+                  ),
+                  const SizedBox(height: 30),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ImageCapture(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
                       ),
                     ),
+                    child: const Text(
+                      'Prendre une photo',
+                      style: TextStyle(fontSize: 18),
+                    ),
                   ),
-                )
-              ],
+                ],
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class ImageCapture extends StatefulWidget {
+  const ImageCapture({Key? key}) : super(key: key);
+
+  @override
+  _ImageCaptureState createState() => _ImageCaptureState();
+}
+
+class _ImageCaptureState extends State<ImageCapture> {
+  File? _image;
+  final ImagePicker _picker = ImagePicker();
+
+  get camera => null;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          "Reconnaissance d'Empreintes Animales",
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.lightGreen,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              height: 300,
+              width: 300,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(10.0),
+                border: _image == null
+                    ? Border.all(color: Colors.blue, width: 2.0)
+                    : Border.all(color: Colors.transparent),
+              ),
+              child: _image == null
+                  ? const Icon(
+                Icons.image,
+                size: 80,
+                color: Colors.blue,
+              )
+                  : ClipRRect(
+                borderRadius: BorderRadius.circular(8.0),
+                child: Image.file(
+                  _image!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    getGallery();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.blue,
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  ),
+                  child: const Text("Choose from gallery"),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CameraPage(camera: camera),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.blue,
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  ),
+                  child: const Text("Take from camera"),
+                ),
+              ],
+            ),
+
+            // Suppression 1
+          ],
+        ),
+      ),
+    );
+  }
+
+
+
+  Future<void> getGallery() async {
+    final pickedFile = await  _picker.getImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path);
+      });
+    }
+  }
+}
+
+class CameraPage extends StatefulWidget {
+  final CameraDescription camera;
+
+  const CameraPage({Key? key, required this.camera}) : super(key: key);
+
+  @override
+  _CameraPageState createState() => _CameraPageState();
+}
+
+class _CameraPageState extends State<CameraPage> {
+  late CameraController _controller;
+  late Future<void> _initializeControllerFuture;
+  File? _imageFile;
+  bool _isCameraActive = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = CameraController(
+      widget.camera,
+      ResolutionPreset.medium,
+    );
+    _initializeControllerFuture = _controller.initialize();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget _buildCameraPreview() {
+    return Center(
+      child: AspectRatio(
+        aspectRatio: _controller.value.aspectRatio,
+        child: CameraPreview(_controller),
+      ),
+    );
+  }
+
+  void _onCapturePressed() async {
+    try {
+      await _initializeControllerFuture;
+      final image = await _controller.takePicture();
+      final bytes = await image.readAsBytes(); // Lire l'image en tant que bytes
+
+      setState(() {
+        _imageFile = File(image.path);
+        _isCameraActive = false;
+      });
+
+      // Afficher la page de prévisualisation avec les options
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PreviewPage(imageBytes: bytes), // Passer les bytes à la page de prévisualisation
+        ),
+      );
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Caméra'),
+      ),
+      body: FutureBuilder<void>(
+        future: _initializeControllerFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return _buildCameraPreview();
+          } else {
+            return const Center(child: CircularProgressIndicator());
+          }
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _isCameraActive ? _onCapturePressed : null,
+        child: const Icon(Icons.camera),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+}
+
+class PreviewPage extends StatelessWidget {
+  final Uint8List imageBytes; // Utiliser Uint8List pour les bytes d'image
+
+  const PreviewPage({Key? key, required this.imageBytes}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Aperçu'),
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Image.memory(
+            imageBytes,
+            height: 300,
+            width: 300,
+            fit: BoxFit.cover,
+          ),
+          SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  // Ajoutez ici la logique pour valider et stocker localement
+                  Navigator.pop(context); // Revenir à la page de la caméra
+                },
+                child: const Text('Valider'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // Ajoutez ici la logique pour supprimer et reprendre une photo
+                  Navigator.pop(context); // Revenir à la page de la caméra
+                },
+                child: const Text('Supprimer'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+class NextPage extends StatelessWidget {
+  final File _image;
+
+  const NextPage(this._image, {Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Next Page"),
+      ),
+      body: Center(
+        child: Image.file(
+          _image,
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
