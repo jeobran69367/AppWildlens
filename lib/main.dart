@@ -2,11 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
+import 'package:permission_handler/permission_handler.dart';
+
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  // Request camera and storage permissions on app launch
+  void initState() {
+    requestPermissions();
+  }
+
+  Future<void> requestPermissions() async {
+    // Request permission to access camera and storage
+    await Permission.camera.request();
+    await Permission.storage.request();
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -14,19 +29,21 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: HomePage(),
+      home: const HomePage(),
     );
   }
 }
 
 class HomePage extends StatelessWidget {
+  const HomePage({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               image: DecorationImage(
                 image: AssetImage('assets/images/background_image.jpg'),
                 fit: BoxFit.cover,
@@ -40,7 +57,7 @@ class HomePage extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: <Widget>[
-                  Text(
+                  const Text(
                     'Bienvenue sur Application',
                     style: TextStyle(
                       fontSize: 24,
@@ -49,30 +66,30 @@ class HomePage extends StatelessWidget {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
                   Image.asset(
                     'assets/images/wildaware-high-resolution-color-logo.png',
                     height: 150,
                   ),
-                  SizedBox(height: 30),
+                  const SizedBox(height: 30),
                   ElevatedButton(
                     onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ImageCapture(),
+                          builder: (context) => const ImageCapture(),
                         ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.white,
                       backgroundColor: Colors.blue,
-                      padding: EdgeInsets.symmetric(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 20,
                         vertical: 10,
                       ),
                     ),
-                    child: Text(
+                    child: const Text(
                       'Prendre une photo',
                       style: TextStyle(fontSize: 18),
                     ),
@@ -88,19 +105,21 @@ class HomePage extends StatelessWidget {
 }
 
 class ImageCapture extends StatefulWidget {
+  const ImageCapture({Key? key}) : super(key: key);
+
   @override
   _ImageCaptureState createState() => _ImageCaptureState();
 }
 
 class _ImageCaptureState extends State<ImageCapture> {
-  File? file;
-  ImagePicker image = ImagePicker();
+  File? _image;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           "Reconnaissance d'Empreintes Animales",
           style: TextStyle(
             fontSize: 12,
@@ -120,12 +139,12 @@ class _ImageCaptureState extends State<ImageCapture> {
               decoration: BoxDecoration(
                 color: Colors.black12,
                 borderRadius: BorderRadius.circular(10.0),
-                border: file == null
+                border: _image == null
                     ? Border.all(color: Colors.blue, width: 2.0)
                     : Border.all(color: Colors.transparent),
               ),
-              child: file == null
-                  ? Icon(
+              child: _image == null
+                  ? const Icon(
                 Icons.image,
                 size: 80,
                 color: Colors.blue,
@@ -133,56 +152,130 @@ class _ImageCaptureState extends State<ImageCapture> {
                   : ClipRRect(
                 borderRadius: BorderRadius.circular(8.0),
                 child: Image.file(
-                  file!,
+                  _image!,
                   fit: BoxFit.cover,
                   width: double.infinity,
                   height: double.infinity,
                 ),
               ),
             ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                getGallery();
-              },
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white, backgroundColor: Colors.blue,
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              ),
-              child: Text("Choose from gallery"),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    getGallery();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.blue,
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  ),
+                  child: const Text("Choose from gallery"),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () {
+                    getCamera();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.blue,
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  ),
+                  child: const Text("Take from camera"),
+                ),
+              ],
             ),
-            SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                getCamera();
-              },
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white, backgroundColor: Colors.blue,
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            const SizedBox(height: 10),
+            if (_image != null)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      getCamera();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.blue,
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    ),
+                    child: const Text("Retake"),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                      // Passer à l'étape suivante avec l'image sélectionnée
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => NextPage(_image!),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.blue,
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    ),
+                    child: const Text("Good"),
+                  ),
+                ],
               ),
-              child: Text("Take from camera"),
-            ),
           ],
         ),
       ),
     );
   }
 
-  getCamera() async {
-    var img = await image.getImage(source: ImageSource.camera);
-    if (img != null) {
+  Future<void> getCamera() async {
+    final pickedFile = await _picker.getImage(source: ImageSource.camera);
+    if (pickedFile != null) return;
+
+(() {
+        _image = File(pickedFile!.path);
+      });
+
+  }
+
+  Future<void> getGallery() async {
+    final pickedFile = await  _picker.getImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
       setState(() {
-        file = File(img.path);
+        _image = File(pickedFile.path);
       });
     }
   }
+}
 
-  getGallery() async {
-    var img = await image.getImage(source: ImageSource.gallery);
-    if (img != null) {
-      setState(() {
-        file = File(img.path);
-      });
-    }
+class imageTempory {
+}
+
+
+
+class NextPage extends StatelessWidget {
+  final File _image;
+
+  const NextPage(this._image, {Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Next Page"),
+      ),
+      body: Center(
+        child: Image.file(
+          _image,
+          fit: BoxFit.contain,
+        ),
+      ),
+    );
   }
 }
