@@ -1,36 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'dart:io';
-import 'dart:typed_data';
+import 'dart:typed_data' show Uint8List;
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  final cameras = await availableCameras();
-  final firstCamera = cameras.first;
-  runApp(MyApp(camera: firstCamera));
+void main() {
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final CameraDescription camera;
+  const MyApp({Key? key}) : super(key: key);
 
-  const MyApp({Key? key, required this.camera}) : super(key: key);
+  // Request camera and storage permissions on app launch
+  void initState() {
+    requestPermissions();
+  }
+
+  Future<void> requestPermissions() async {
+    // Request permission to access camera and storage
+    await Permission.camera.request();
+    await Permission.storage.request();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Mon Projet Flutter',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: HomePage(camera: camera),
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: const HomePage(),
     );
   }
 }
 
 class HomePage extends StatelessWidget {
-  final CameraDescription camera;
-
-  const HomePage({Key? key, required this.camera}) : super(key: key);
+  const HomePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +78,7 @@ class HomePage extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ImageCapture(camera: camera),
+                          builder: (context) => const ImageCapture(),
                         ),
                       );
                     },
@@ -80,7 +86,9 @@ class HomePage extends StatelessWidget {
                       foregroundColor: Colors.white,
                       backgroundColor: Colors.blue,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
                     ),
                     child: const Text(
                       'Prendre une photo',
@@ -98,9 +106,7 @@ class HomePage extends StatelessWidget {
 }
 
 class ImageCapture extends StatefulWidget {
-  final CameraDescription camera;
-
-  const ImageCapture({Key? key, required this.camera}) : super(key: key);
+  const ImageCapture({Key? key}) : super(key: key);
 
   @override
   _ImageCaptureState createState() => _ImageCaptureState();
@@ -110,13 +116,18 @@ class _ImageCaptureState extends State<ImageCapture> {
   File? _image;
   final ImagePicker _picker = ImagePicker();
 
+  get camera => null;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           "Reconnaissance d'Empreintes Animales",
-          style: TextStyle(fontSize: 12, color: Colors.lightGreen),
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.lightGreen,
+          ),
           textAlign: TextAlign.center,
         ),
       ),
@@ -136,7 +147,7 @@ class _ImageCaptureState extends State<ImageCapture> {
                     : Border.all(color: Colors.transparent),
               ),
               child: _image == null
-                  ? Icon(
+                  ? const Icon(
                 Icons.image,
                 size: 80,
                 color: Colors.blue,
@@ -162,10 +173,10 @@ class _ImageCaptureState extends State<ImageCapture> {
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   ),
-                  child: const Text("Choisir dans la galerie"),
+                  child: const Text("Choose from gallery"),
                 ),
                 const SizedBox(width: 10),
                 ElevatedButton(
@@ -173,25 +184,29 @@ class _ImageCaptureState extends State<ImageCapture> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => CameraPage(camera: widget.camera),
+                        builder: (context) => CameraPage(camera: camera),
                       ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   ),
-                  child: const Text("Prendre depuis la caméra"),
+                  child: const Text("Take from camera"),
                 ),
               ],
             ),
+
+            // Suppression 1
           ],
         ),
       ),
     );
   }
+
+
 
   Future<void> getGallery() async {
     final pickedFile = await  _picker.getImage(source: ImageSource.gallery);
@@ -221,7 +236,10 @@ class _CameraPageState extends State<CameraPage> {
   @override
   void initState() {
     super.initState();
-    _controller = CameraController(widget.camera, ResolutionPreset.medium);
+    _controller = CameraController(
+      widget.camera,
+      ResolutionPreset.medium,
+    );
     _initializeControllerFuture = _controller.initialize();
   }
 
@@ -244,16 +262,18 @@ class _CameraPageState extends State<CameraPage> {
     try {
       await _initializeControllerFuture;
       final image = await _controller.takePicture();
-      final bytes = await image.readAsBytes();
+      final bytes = await image.readAsBytes(); // Lire l'image en tant que bytes
+
       setState(() {
         _imageFile = File(image.path);
         _isCameraActive = false;
       });
 
+      // Afficher la page de prévisualisation avec les options
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => PreviewPage(imageBytes: bytes),
+          builder: (context) => PreviewPage(imageBytes: bytes), // Passer les bytes à la page de prévisualisation
         ),
       );
     } catch (e) {
@@ -287,7 +307,7 @@ class _CameraPageState extends State<CameraPage> {
 }
 
 class PreviewPage extends StatelessWidget {
-  final Uint8List imageBytes;
+  final Uint8List imageBytes; // Utiliser Uint8List pour les bytes d'image
 
   const PreviewPage({Key? key, required this.imageBytes}) : super(key: key);
 
@@ -307,20 +327,20 @@ class PreviewPage extends StatelessWidget {
             width: 300,
             fit: BoxFit.cover,
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               ElevatedButton(
                 onPressed: () {
-                  // Ajouter ici la logique pour valider et stocker localement
+                  // Ajoutez ici la logique pour valider et stocker localement
                   Navigator.pop(context); // Revenir à la page de la caméra
                 },
                 child: const Text('Valider'),
               ),
               ElevatedButton(
                 onPressed: () {
-                  // Ajouter ici la logique pour supprimer et reprendre une photo
+                  // Ajoutez ici la logique pour supprimer et reprendre une photo
                   Navigator.pop(context); // Revenir à la page de la caméra
                 },
                 child: const Text('Supprimer'),
@@ -328,6 +348,29 @@ class PreviewPage extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+
+class NextPage extends StatelessWidget {
+  final File _image;
+
+  const NextPage(this._image, {Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Next Page"),
+      ),
+      body: Center(
+        child: Image.file(
+          _image,
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
