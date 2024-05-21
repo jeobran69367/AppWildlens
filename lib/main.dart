@@ -183,7 +183,8 @@ class _ImageCaptureState extends State<ImageCapture> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => CameraPage(camera: widget.camera),
+                        builder: (context) =>
+                            CameraPage(camera: widget.camera),
                       ),
                     );
                   },
@@ -222,22 +223,15 @@ class _ImageCaptureState extends State<ImageCapture> {
     final pickedFile =
     await _picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
     if (pickedFile != null) {
-      if (kIsWeb) {
-        Uint8List bytes = await pickedFile.readAsBytes();
-        setState(() {
-          _webImage = bytes;
-          _image = null; // Assurez-vous que _image est null pour éviter les conflits
-        });
-      } else {
-        setState(() {
+      setState(() async {
+        if (kIsWeb) {
+          _webImage = await pickedFile.readAsBytes();
+        } else {
           _image = File(pickedFile.path);
-          _webImage = null; // Assurez-vous que _webImage est null pour éviter les conflits
-        });
-      }
+        }
+      });
     }
   }
-}
-
 
   Future<void> uploadImage(dynamic image) async {
     final request = http.MultipartRequest(
@@ -264,7 +258,7 @@ class _ImageCaptureState extends State<ImageCapture> {
       print('Upload failed with status code: ${response.statusCode}');
     }
   }
-
+}
 
 class CameraPage extends StatefulWidget {
   final CameraDescription camera
