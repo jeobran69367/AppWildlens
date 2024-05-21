@@ -17,7 +17,7 @@ ENV PATH="/usr/local/flutter/bin:${PATH}"
 
 # Mettez à jour le PATH pour inclure le répertoire Flutter
 ENV PATH="K:/SDK/flutter/bin"
-ENV ANDROID_HOME = "C:\Users\jeobr\AppData\Local\Android\Sdk"
+ENV ANDROID_HOME = "C:/Users/jeobr/AppData/Local/Android/Sdk"
 
 
 # Copiez les fichiers du projet dans le conteneur Docker
