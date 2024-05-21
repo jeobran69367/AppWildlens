@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:camera/camera.dart';
+import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -108,6 +110,7 @@ class ImageCapture extends StatefulWidget {
 
 class _ImageCaptureState extends State<ImageCapture> {
   File? _image;
+  Uint8List? _webImage;
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -131,11 +134,11 @@ class _ImageCaptureState extends State<ImageCapture> {
               decoration: BoxDecoration(
                 color: Colors.black12,
                 borderRadius: BorderRadius.circular(10.0),
-                border: _image == null
+                border: _image == null && _webImage == null
                     ? Border.all(color: Colors.blue, width: 2.0)
                     : Border.all(color: Colors.transparent),
               ),
-              child: _image == null
+              child: _image == null && _webImage == null
                   ? Icon(
                 Icons.image,
                 size: 80,
@@ -143,9 +146,16 @@ class _ImageCaptureState extends State<ImageCapture> {
               )
                   : ClipRRect(
                 borderRadius: BorderRadius.circular(8.0),
-                child: Image.file(
+                child: kIsWeb
+                    ? Image.memory(
+                  _webImage!,
+                  fit: BoxFit.contain,
+                  width: double.infinity,
+                  height: double.infinity,
+                )
+                    : Image.file(
                   _image!,
-                  fit: BoxFit.cover,
+                  fit: BoxFit.contain,
                   width: double.infinity,
                   height: double.infinity,
                 ),
@@ -173,7 +183,8 @@ class _ImageCaptureState extends State<ImageCapture> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => CameraPage(camera: widget.camera),
+                        builder: (context) =>
+                            CameraPage(camera: widget.camera),
                       ),
                     );
                   },
@@ -187,6 +198,21 @@ class _ImageCaptureState extends State<ImageCapture> {
                 ),
               ],
             ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _image == null && _webImage == null
+                  ? null
+                  : () {
+                uploadImage(_image ?? _webImage!);
+              },
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.green,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 10),
+              ),
+              child: const Text("Valider"),
+            ),
           ],
         ),
       ),
@@ -194,17 +220,49 @@ class _ImageCaptureState extends State<ImageCapture> {
   }
 
   Future<void> getGallery() async {
-    final pickedFile = await  _picker.getImage(source: ImageSource.gallery);
+    final pickedFile =
+    await _picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
     if (pickedFile != null) {
-      setState(() {
-        _image = File(pickedFile.path);
+      setState(() async {
+        if (kIsWeb) {
+          _webImage = await pickedFile.readAsBytes();
+        } else {
+          _image = File(pickedFile.path);
+        }
       });
+    }
+  }
+
+  Future<void> uploadImage(dynamic image) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse(
+          'https://api.roboflow.com/dataset/YOUR_DATASET_NAME/upload?api_key=YOUR_API_KEY'),
+    );
+
+    if (kIsWeb) {
+      request.files.add(http.MultipartFile.fromBytes('file', image,
+          filename: 'upload.png'));
+    } else {
+      request.files.add(
+          await http.MultipartFile.fromPath('file', image.path));
+    }
+
+    final response = await request.send();
+
+    if (response.statusCode == 200) {
+      final responseData = await response.stream.bytesToString();
+      final result = json.decode(responseData);
+      print('Upload successful: $result');
+    } else {
+      print('Upload failed with status code: ${response.statusCode}');
     }
   }
 }
 
 class CameraPage extends StatefulWidget {
-  final CameraDescription camera;
+  final CameraDescription camera
+  ;
 
   const CameraPage({Key? key, required this.camera}) : super(key: key);
 
@@ -215,8 +273,6 @@ class CameraPage extends StatefulWidget {
 class _CameraPageState extends State<CameraPage> {
   late CameraController _controller;
   late Future<void> _initializeControllerFuture;
-  File? _imageFile;
-  bool _isCameraActive = true;
 
   @override
   void initState() {
@@ -245,10 +301,6 @@ class _CameraPageState extends State<CameraPage> {
       await _initializeControllerFuture;
       final image = await _controller.takePicture();
       final bytes = await image.readAsBytes();
-      setState(() {
-        _imageFile = File(image.path);
-        _isCameraActive = false;
-      });
 
       Navigator.push(
         context,
@@ -278,7 +330,7 @@ class _CameraPageState extends State<CameraPage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _isCameraActive ? _onCapturePressed : null,
+        onPressed: _onCapturePressed,
         child: const Icon(Icons.camera),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -290,6 +342,27 @@ class PreviewPage extends StatelessWidget {
   final Uint8List imageBytes;
 
   const PreviewPage({Key? key, required this.imageBytes}) : super(key: key);
+
+  Future<void> uploadImage(Uint8List image) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse(
+          'https://api.roboflow.com/dataset/YOUR_DATASET_NAME/upload?api_key=YOUR_API_KEY'),
+    );
+
+    request.files.add(http.MultipartFile.fromBytes('file', image,
+        filename: 'upload.png'));
+
+    final response = await request.send();
+
+    if (response.statusCode == 200) {
+      final responseData = await response.stream.bytesToString();
+      final result = json.decode(responseData);
+      print('Upload successful: $result');
+    } else {
+      print('Upload failed with status code: ${response.statusCode}');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -305,7 +378,7 @@ class PreviewPage extends StatelessWidget {
             imageBytes,
             height: 300,
             width: 300,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
           ),
           const SizedBox(height: 20),
           Row(
@@ -313,9 +386,14 @@ class PreviewPage extends StatelessWidget {
             children: [
               ElevatedButton(
                 onPressed: () {
-                  // Ajouter ici la logique pour valider et stocker localement
-                  Navigator.pop(context); // Revenir à la page de la caméra
+                  uploadImage(imageBytes);
                 },
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 10),
+                ),
                 child: const Text('Valider'),
               ),
               ElevatedButton(

@@ -11,37 +11,25 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'espece App',
-      home: especePage(),
+    return MaterialApp(
+      title: 'Espece App',
+      home: EspecePage(),
     );
   }
 }
 
-class especePage extends StatefulWidget {
-  const especePage({Key? key}) : super(key: key);
+class EspecePage extends StatefulWidget {
+  const EspecePage({Key? key}) : super(key: key);
 
   @override
-  _especePageState createState() => _especePageState();
+  _EspecePageState createState() => _EspecePageState();
 }
 
-class _especePageState extends State<especePage> {
-  late Map<String, dynamic> _especeData = {}; // Initialiser à un map vide
-  late String _imageUrl = ''; // Initialiser à une chaîne vide
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchespeceData();
-  }
-
-  Future<void> _fetchespeceData() async {
-    final response = await http.get(Uri.parse('http://127.0.0.1:8000/espece/1'));
+class _EspecePageState extends State<EspecePage> {
+  Future<Map<String, dynamic>> _fetchEspeceData(int id) async {
+    final response = await http.get(Uri.parse('http://192.168.1.100:8000/espece/$id')); // Changez l'IP ici
     if (response.statusCode == 200) {
-      setState(() {
-        _especeData = json.decode(response.body);
-        _imageUrl = _especeData['image'];
-      });
+      return json.decode(response.body);
     } else {
       throw Exception('Failed to fetch espece data');
     }
@@ -51,22 +39,45 @@ class _especePageState extends State<especePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('espece App'),
+        title: const Text('Espece App'),
       ),
-      body: _especeData.isNotEmpty
-          ? Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 16.0),
-          Text(
-            _especeData['Espece'],
-            style: const TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8.0),
-          Text(_especeData['description']),
-        ],
-      )
-          : const Center(child: CircularProgressIndicator()),
+      body: FutureBuilder(
+        future: _fetchEspeceData(5), // Changez l'ID ici selon votre besoin
+        builder: (context, AsyncSnapshot<Map<String, dynamic>> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (snapshot.hasData) {
+            final especeData = snapshot.data!;
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      especeData['Espece'],
+                      style: const TextStyle(
+                        fontSize: 24.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8.0),
+                    Text(
+                      especeData['Description'],
+                      style: const TextStyle(fontSize: 16.0),
+                    ),
+                    // Ajoutez le reste des informations à afficher ici...
+                  ],
+                ),
+              ),
+            );
+          } else {
+            return const Center(child: Text('No data available'));
+          }
+        },
+      ),
     );
   }
 }
